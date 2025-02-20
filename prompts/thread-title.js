@@ -15,3 +15,11 @@ export const TITLE_USER_PROMPT = `Based on the following conversation, generate 
 {conversation}
 
 {artifact_context}`;
+
+export const TITLE_TOOL = {
+    name: "generate_title",
+    description: "Generate a concise title for the conversation.",
+    schema: z.object({
+        title: z.string().describe("The generated title for the conversation."),
+    }),
+};
