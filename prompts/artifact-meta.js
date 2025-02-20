@@ -27,3 +27,79 @@ export const OPTIONALLY_UPDATE_META_PROMPT = `It has been pre-determined based o
 {artifactTitle}
 
 You should use this as context when generating your response.`;
+
+export const PROGRAMMING_LANGUAGES = [
+  { language: "python", extension: "py" },
+  { language: "javascript", extension: "js" },
+  { language: "typescript", extension: "ts" },
+  { language: "c", extension: "c" },
+  { language: "c++", extension: "cpp" },
+  { language: "java", extension: "java" },
+  { language: "go", extension: "go" },
+  { language: "rust", extension: "rs" },
+  { language: "swift", extension: "swift" },
+  { language: "kotlin", extension: "kt" },
+  { language: "php", extension: "php" },
+  { language: "ruby", extension: "rb" },
+  { language: "sql", extension: "sql" },
+  { language: "html", extension: "html" },
+  { language: "css", extension: "css" },
+  { language: "json", extension: "json" },
+  { language: "xml", extension: "xml" },
+  { language: "yaml", extension: "yaml" },
+  { language: "markdown", extension: "md" },
+  { language: "bash", extension: "sh" },
+  { language: "shell", extension: "sh" },
+  { language: "powershell", extension: "ps1" },
+  { language: "c#", extension: "cs" },
+  { language: "other", extension: "txt" },
+];
+
+export const ARTIFACT_TOOL_SCHEMA = z.object({
+  type: z
+    .enum(["code", "text"])
+    .describe("The content type of the artifact generated."),
+  language: z
+    .enum(
+      PROGRAMMING_LANGUAGES.map((lang) => lang.language)
+    )
+    .optional()
+    .describe(
+      "The language/programming language of the artifact generated.\n" +
+      "If generating code, it should be one of the options, or 'other'.\n" +
+      "If not generating code, the language should ALWAYS be 'other'."
+    ),
+  isValidReact: z
+    .boolean()
+    .optional()
+    .describe(
+      "Whether or not the generated code is valid React code. Only populate this field if generating code."
+    ),
+  artifact: z.string().describe("The content of the artifact to generate."),
+  title: z
+    .string()
+    .describe(
+      "A short title to give to the artifact. Should be less than 5 words."
+    ),
+});
+
+export const OPTIONALLY_UPDATE_ARTIFACT_META_SCHEMA = z
+  .object({
+    type: z
+      .enum(["text", "code"])
+      .describe("The type of the artifact content."),
+    title: z
+      .string()
+      .optional()
+      .describe(
+        "The new title to give the artifact. ONLY update this if the user is making a request which changes the subject/topic of the artifact."
+      ),
+    language: z
+      .enum(
+        PROGRAMMING_LANGUAGES.map((lang) => lang.language)
+      )
+      .describe(
+        "The language of the code artifact. This should be populated with the programming language if the user is requesting code to be written, or 'other', in all other cases."
+      ),
+  })
+  .describe("Update the artifact meta information, if necessary.");

@@ -1,4 +1,18 @@
 import { z } from "zod";
+import { 
+  GET_TITLE_TYPE_REWRITE_ARTIFACT, 
+  OPTIONALLY_UPDATE_ARTIFACT_META_SCHEMA, 
+  PROGRAMMING_LANGUAGES, 
+  ARTIFACT_TOOL_SCHEMA 
+} from "./artifact-meta.js";
+import { 
+  ADD_COMMENTS_TO_CODE_ARTIFACT_PROMPT, 
+  ADD_LOGS_TO_CODE_ARTIFACT_PROMPT 
+} from "./code-artifact.js";
+import { FOLLOWUP_ARTIFACT_PROMPT } from "./followup.js";
+import { NEW_ARTIFACT_PROMPT } from "./new-artifact.js";
+import { TaskSchema } from "./task.js";
+import { TITLE_SYSTEM_PROMPT, TITLE_USER_PROMPT } from "./thread-title.js";
 
 const DEFAULT_CODE_PROMPT_RULES = `- Do NOT include triple backticks when generating code. The code should be in plain text.`;
 
@@ -40,162 +54,3 @@ ${DEFAULT_CODE_PROMPT_RULES}
 
 Ensure you ONLY reply with the rewritten artifact and NO other content.
 `;
-
-export const PROGRAMMING_LANGUAGES = [
-  { language: "python", extension: "py" },
-  { language: "javascript", extension: "js" },
-  { language: "typescript", extension: "ts" },
-  { language: "c", extension: "c" },
-  { language: "c++", extension: "cpp" },
-  { language: "java", extension: "java" },
-  { language: "go", extension: "go" },
-  { language: "rust", extension: "rs" },
-  { language: "swift", extension: "swift" },
-  { language: "kotlin", extension: "kt" },
-  { language: "php", extension: "php" },
-  { language: "ruby", extension: "rb" },
-  { language: "sql", extension: "sql" },
-  { language: "html", extension: "html" },
-  { language: "css", extension: "css" },
-  { language: "json", extension: "json" },
-  { language: "xml", extension: "xml" },
-  { language: "yaml", extension: "yaml" },
-  { language: "markdown", extension: "md" },
-  { language: "bash", extension: "sh" },
-  { language: "shell", extension: "sh" },
-  { language: "powershell", extension: "ps1" },
-  { language: "c#", extension: "cs" },
-  { language: "other", extension: "txt" },
-];
-
-export const ARTIFACT_TOOL_SCHEMA = z.object({
-  type: z
-    .enum(["code", "text"])
-    .describe("The content type of the artifact generated."),
-  language: z
-    .enum(
-      PROGRAMMING_LANGUAGES.map((lang) => lang.language)
-    )
-    .optional()
-    .describe(
-      "The language/programming language of the artifact generated.\n" +
-      "If generating code, it should be one of the options, or 'other'.\n" +
-      "If not generating code, the language should ALWAYS be 'other'."
-    ),
-  isValidReact: z
-    .boolean()
-    .optional()
-    .describe(
-      "Whether or not the generated code is valid React code. Only populate this field if generating code."
-    ),
-  artifact: z.string().describe("The content of the artifact to generate."),
-  title: z
-    .string()
-    .describe(
-      "A short title to give to the artifact. Should be less than 5 words."
-    ),
-});
-
-export const FileTaskSchema = z.object({
-  tasks: z.array(
-    z.object({
-      filename: z.string().describe("The name of the file being modified"),
-      description: z.string().describe("A detailed description of the task"),
-      type: z.enum([
-        "modify",
-        "delete",
-        "rename",
-        "refactor",
-        "optimize",
-        "add",
-        "create",
-      ]).describe("The type of operation to be performed"),
-      details: z.array(
-        z.string().describe("Additional details or instructions for the task")
-      ),
-      references: z.array(z.string()).describe("References to other filenames related to the task"),
-    })
-  ).describe("List of tasks to perform on the file"),
-});
-
-export const FileTaskListSchema = z.array(FileTaskSchema).describe(
-  "A list of files with associated tasks"
-);
-
-export const TaskSchema = z.object({
-  filename: z.string().describe("The name of the file being modified"),
-  description: z.string().describe("A detailed description of the task"),
-  type: z.enum([
-    "modify",
-    "delete",
-    "rename",
-    "refactor",
-    "optimize",
-    "add",
-    "create",
-  ]).describe("The type of operation to be performed"),
-  details: z.array(
-    z.string().describe("Additional details or instructions for the task")
-  ),
-  references: z.array(z.string()).describe("References to other filenames related to the task"),
-});
-
-export const OPTIONALLY_UPDATE_ARTIFACT_META_SCHEMA = z
-  .object({
-    type: z
-      .enum(["text", "code"])
-      .describe("The type of the artifact content."),
-    title: z
-      .string()
-      .optional()
-      .describe(
-        "The new title to give the artifact. ONLY update this if the user is making a request which changes the subject/topic of the artifact."
-      ),
-    language: z
-      .enum(
-        PROGRAMMING_LANGUAGES.map((lang) => lang.language)
-      )
-      .describe(
-        "The language of the code artifact. This should be populated with the programming language if the user is requesting code to be written, or 'other', in all other cases."
-      ),
-  })
-  .describe("Update the artifact meta information, if necessary.");
-
-export const RECOMMENDATIONS_TOOL_SCHEMA = z.object({
-  recommendations: z.array(
-    z.object({
-      title: z.string().describe("The title of the recommendation"),
-      filename: z.string().describe("The name of the file being recommended"),
-      priority: z.enum(["high", "medium", "low"]).describe("The priority of the recommendation"),
-      description: z.string().describe("A detailed description of the recommendation"),
-      type: z.enum(["fix", "add feature", "optimize", "refactor", "enhance"]).describe("The type of recommendation"),
-      details: z.array(
-        z.string().describe("Additional details or instructions for the recommendation")
-      ),
-    })
-  ).describe("List of recommendations to improve the artifact"),
-});
-
-export const SUGGESTED_QUESTIONS_TOOL_SCHEMA = z.object({
-  questions: z.array(
-    z.string().describe("A suggested question based on the user's query")
-  ).describe("List of suggested questions"),
-});
-
-export const ReviewChangesSchema = z.object({
-  pass: z.boolean().describe("Whether the changes are correct or not"),
-  suggestions: z.array(z.string()).describe("Suggestions for improvement"),
-  review: z.string().describe("The review of the changes"),
-});
-
-export const FindBugSchema = z.object({
-  bugs: z.array(
-    z.object({
-      description: z.string().describe("A detailed description of the bug"),
-      type: z.enum(["logic", "syntax", "business logic"]).describe("The type of bug"),
-      location: z.string().describe("The location of the bug in the code"),
-      fix: z.string().describe("The suggested fix for the bug"),
-      sevrity: z.enum(["low", "medium", "high", "critical"]).describe("The severity of the bug"),
-    })
-  ).describe("List of identified bugs in the artifact"),
-});
