@@ -39,10 +39,7 @@ async function createSnakeGame() {
 workspace.init().then(async () => {
     console.log("Workspace initialized.", workspace);
 
-    await workspace.getSuggestedQuestions()
-        .then(async (suggestedQuestions) => {
-            console.log("Suggested questions:", suggestedQuestions);
-        });
+    
 
 
 }).catch((error) => console.error(error));

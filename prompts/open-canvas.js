@@ -555,6 +555,7 @@ export const TaskSchema = z.object({
   details: z.array(
     z.string().describe("Additional details or instructions for the task")
   ),
+  references: z.array(z.string()).describe("References to other filenames related to the task"),
 });
 
 export const GENERATE_TASKS_PROMPT = `You are an AI assistant tasked with generating a task based on the user's description.
@@ -578,6 +579,8 @@ Rules and guidelines:
 - Ensure the task is relevant to the user's description and the provided context.
 - Do not include any additional text before or after the task.
 - Respond with ONLY the generated task.
+- Do not assume any other code other than the provided artifacts.
+- If variables are needed, include them in the task description.
 </rules-guidelines>`;
 
 export const FileTaskSchema = z.object({
@@ -597,6 +600,7 @@ export const FileTaskSchema = z.object({
       details: z.array(
         z.string().describe("Additional details or instructions for the task")
       ),
+      references: z.array(z.string()).describe("References to other filenames related to the task"),
     })
   ).describe("List of tasks to perform on the file"),
 });

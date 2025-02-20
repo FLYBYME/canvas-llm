@@ -14,6 +14,7 @@ const workspace = new Workspace({
 const rlInterface = rl.createInterface({
     input: process.stdin,
     output: process.stdout,
+    terminal: true
 });
 
 const commands = {
@@ -152,7 +153,7 @@ async function question() {
         const [command, ...args] = line.split(" ");
         if (commands[command]) {
             await commands[command].callback(args.join(" ")).catch((error) => {
-                process.stdout.write(`Error: ${error.message}\n`);
+                process.stdout.write(`Error: ${error.stack}\n`);
             });
             question();
             return;
