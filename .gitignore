@@ -66,6 +66,8 @@ typings/
 id_ecdsa
 config.json
 
-workspace/
+/workspace/*
+/workspaces/*
+/frontend/*
 
 env.js

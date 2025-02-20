@@ -5,8 +5,11 @@
     "@langchain/langgraph": "^0.2.46",
     "@langchain/ollama": "^0.2.0",
     "@langchain/openai": "^0.4.4",
+    "body-parser": "^1.20.3",
     "diff": "^7.0.0",
-    "langchain": "^0.3.15"
+    "express": "^4.21.2",
+    "langchain": "^0.3.15",
+    "uuid": "^11.1.0"
   },
   "name": "langchain-ollama",
   "version": "1.0.0",
