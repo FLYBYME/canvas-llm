@@ -48,13 +48,20 @@ const commands = {
             const recommendations = workspace.recommendations;
             workspace.recommendations = [];
 
-            for (const recommendation of recommendations) {
-                await workspace.performTask(recommendation)
-                    .then((task) => {
-                        process.stdout.write("Done.\n");
-                        process.stdout.write(JSON.stringify(task, null, 2));
-                    })
-            }
+            const tasks = recommendations.map((recommendation) => ({
+                ...recommendation,
+                id: recommendation.title,
+                priority: recommendation.priority || 0,
+                status: 'pending',
+                progress: 0,
+                result: null
+            }));
+
+            await workspace.coordinateTasks(tasks)
+                .then((taskResults) => {
+                    process.stdout.write("Done.\n");
+                    process.stdout.write(JSON.stringify(taskResults, null, 2));
+                });
 
             process.stdout.write("Done.\n");
 
@@ -72,11 +79,21 @@ const commands = {
             }
             // remove the recommendation from the recommendations array
             workspace.recommendations = workspace.recommendations.filter((r) => r.title !== task);
-            await workspace.performTask(recommendation)
-                .then((task) => {
+
+            const taskWithStatus = {
+                ...recommendation,
+                id: recommendation.title,
+                priority: recommendation.priority || 0,
+                status: 'pending',
+                progress: 0,
+                result: null
+            };
+
+            await workspace.performTaskWithStatus(taskWithStatus)
+                .then((taskResult) => {
                     process.stdout.write("Done.\n");
-                    process.stdout.write(JSON.stringify(task, null, 2));
-                })
+                    process.stdout.write(JSON.stringify(taskResult, null, 2));
+                });
         }
     },
     "generate-reflect": {
