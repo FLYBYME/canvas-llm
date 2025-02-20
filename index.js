@@ -13,7 +13,7 @@ async function createSnakeGame() {
     const jsArtifact = await workspace.getArtifact("snake.js");
     const cssArtifact = await workspace.getArtifact("snake.css");
 
-    workspace.generateFileTasks(
+    const tasks = await workspace.generateFileTasks(
         "Snake Game",
         "Create a simple snake game using HTML canvas",
         [
@@ -21,19 +21,25 @@ async function createSnakeGame() {
             jsArtifact,
             cssArtifact
         ]
-    ).then(async ({ tasks }) => {
+    );
 
-        console.log("File tasks generated.");
-        console.log(tasks);
+    console.log("File tasks generated.");
+    console.log(tasks);
 
-        for (const task of tasks) {
-            await workspace.performTask(task);
-        }
+    const taskQueue = tasks.tasks.map((task) => ({
+        ...task,
+        id: task.filename,
+        priority: task.priority || 0,
+        status: 'pending',
+        progress: 0,
+        result: null
+    }));
 
-        console.log("Tasks performed.");
-
-    });
-
+    await workspace.coordinateTasks(taskQueue)
+        .then((taskResults) => {
+            console.log("Tasks performed.");
+            console.log(taskResults);
+        });
 }
 
 workspace.init().then(async () => {
