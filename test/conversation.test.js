@@ -1,5 +1,5 @@
 import Conversation from '../lib/conversation';
-import { ChatOpenAI } from "@langchain/openai";
+import { small, large } from "../model.js";
 
 jest.mock("@langchain/openai");
 
