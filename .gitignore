@@ -69,5 +69,7 @@ config.json
 /workspace/*
 /workspaces/*
 /frontend/*
+/db/*
+
 
 env.js
