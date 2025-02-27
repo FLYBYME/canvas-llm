@@ -3,7 +3,6 @@
 const DbService = require("@moleculer/database").Service;
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 const fs = require("fs").promises;
-const { query } = require("express");
 const path = require("path");
 
 /**
@@ -73,6 +72,12 @@ module.exports = {
                 default: {},
             },
 
+            codeStyleGuide: {
+                type: "string",
+                required: false,
+                default: null,
+            },
+
             id: {
                 type: "string",
                 primaryKey: true,
@@ -127,6 +132,92 @@ module.exports = {
             async handler(ctx) {
                 const workspace = await this.resolveByName(ctx, ctx.params.name);
                 return workspace;
+            }
+        },
+
+        getFileStructure: {
+            rest: {
+                method: "GET",
+                path: "/:id/file-structure"
+            },
+            params: {
+                id: { type: "string" }
+            },
+            async handler(ctx) {
+                const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
+
+                return ctx.call("v1.file-structures.find", { query: { workspace: workspace.id } });
+            }
+        },
+
+        updateFileStructure: {
+            rest: {
+                method: "PUT",
+                path: "/:id/file-structure"
+            },
+            params: {
+                id: { type: "string" },
+                fileStructure: { type: "object" }
+            },
+            async handler(ctx) {
+                const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
+
+                return ctx.call("v1.file-structures.update", { ...ctx.params.fileStructure });
+            }
+        },
+
+        refineFileStructure: {
+            rest: {
+                method: "PUT",
+                path: "/:id/refine-file-structure"
+            },
+            params: {
+                id: { type: "string" },
+                fileStructure: { type: "object" }
+            },
+            async handler(ctx) {
+                const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
+
+                const files = await ctx.call("v1.file-structures.find", { query: { workspace: workspace.id } })
+
+                const [FileStructure] = await Promise.all([
+                    ctx.call("v1.tools.lookup", { name: 'FileStructure' })
+                ]);
+
+                const fileStructure = await this.generateRun(ctx, {
+                    content: [
+                        `Improve, refine and optimize the file structure. Add any export function and dependinces if needed.
+These are the other files:
+${files.map(file => `${file.fileName}${file.fileName === ctx.params.fileStructure.fileName ? ' (current file)' : ''}`).join("\n")}
+
+This is the current file structure:
+${JSON.stringify(ctx.params.fileStructure, null, 2)}`
+                    ],
+                }, FileStructure);
+
+                const result = await ctx.call("v1.messages.getResult", { id: fileStructure.message.id });
+
+                return result[0];
+            }
+        },
+
+        generateArtifactFromFileStructure: {
+            rest: {
+                method: "POST",
+                path: "/:id/generate-artifact-from-file-structure"
+            },
+            params: {
+                id: { type: "string" },
+                fileStructure: { type: "string" }
+            },
+            async handler(ctx) {
+                const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
+
+                return ctx.call("v1.artifacts.generateArtifactFromFileStructure", { workspace: workspace.id, fileStructure: ctx.params.fileStructure });
             }
         },
 
@@ -303,7 +394,7 @@ module.exports = {
                 if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
 
                 const [model, tool, artifacts] = await Promise.all([
-                    ctx.call("v1.models.lookup", { name: "llama3.2:1b" }),
+                    ctx.call("v1.models.lookup", { name: "llama3.1:latest" }),
                     ctx.call("v1.tools.lookup", { name: 'WorkspaceCodeStructure' }),
                     ctx.call("v1.artifacts.find", {
                         query: {
@@ -340,6 +431,7 @@ keyDetails:
 
                 const updatedRun = await ctx.call("v1.runs.invoke", { id: run.id });
                 const result = await ctx.call("v1.messages.getResult", { id: updatedRun.response });
+                console.log(result);
 
                 const updated = await this.updateEntity(ctx, { id: ctx.params.id, codeStructure: result });
 
@@ -402,60 +494,70 @@ keyDetails:
                 path: "/:id/generate-initial-file-structure"
             },
             params: {
-                id: { type: "string" }
+                id: { type: "string" },
+                query: { type: "string" }
             },
             async handler(ctx) {
                 const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
                 if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
 
-                const [model, tool] = await Promise.all([
-                    ctx.call("v1.models.lookup", { name: "gpt-4o-mini" }),
+                const [GenerateInitialFileStructure] = await Promise.all([
                     ctx.call("v1.tools.lookup", { name: 'GenerateInitialFileStructure' })
                 ]);
 
-                const codeStyle = require('../style-guides/angularjs.json');
-
-                const run = await ctx.call("v1.runs.create", {
-                    name: "GenerateInitialFileStructure",
-                    model: model.id,
-                    tool: tool.id,
-                    options: {}
-                });
-
-                await ctx.call("v1.messages.create", {
-                    run: run.id,
-                    role: "user",
-                    content: tool.systemPrompt
-                });
-
-                await ctx.call("v1.messages.create", {
-                    run: run.id,
-                    role: "user",
-                    content: codeStyle['Project Structure'].join("\n")
-                });
-
-                await ctx.call("v1.messages.create", {
-                    run: run.id,
-                    role: "user",
-                    content: "Build an e-commerce landing page using AngularJS and Bootstrap v3. The site should include a homepage that showcases featured products, a product listing page with filtering options, and a product details page. The homepage should have a hero banner with promotional content, testimonials, and a newsletter subscription form. The product listing page should display products in a grid with search and category filters. The product details page should include an image, description, price, and an 'Add to Cart' button. The site should be mobile-friendly and use AngularJS for navigation and dynamic content."
-                });
-
-                const result = await ctx.call("v1.runs.invoke", { id: run.id });
-                const message = await ctx.call("v1.messages.resolve", { id: result.response });
-
-                const { files } = message.tool_calls[0].args;
-
-                console.log(files)
-
-                const specification = files.find(file => file.fileType === 'javascript');
-                console.log(specification)
-                const test = await this.actions.javaScriptFileSpecification({ id: ctx.params.id, specification: specification });
-
-                return {
-                    specification,
-                    test
+                if (!workspace.codeStyleGuide) {
+                    throw new MoleculerClientError(`Workspace ${workspace.name} code style guide not found`, 404, "WORKSPACE_CODE_STYLE_GUIDE_NOT_FOUND", { id: ctx.params.id });
                 }
 
+
+                const fileStructure = await this.generateRun(ctx, {
+                    content: [
+                        workspace.codeStyleGuide,
+                        ctx.params.query
+                    ]
+                }, GenerateInitialFileStructure);
+
+                const { files } = fileStructure.message.tool_calls[0].args;
+
+                console.log('files', files);
+
+                const oldFiles = await ctx.call("v1.file-structures.getForWorkspace", { workspace: workspace.id });
+
+                for (const file of oldFiles) {
+                    await ctx.call("v1.file-structures.remove", { id: file.id });
+                }
+
+                for (const file of files) {
+                    await ctx.call("v1.file-structures.create", { workspace: workspace.id, ...file });
+                }
+
+                return workspace;
+
+            }
+        },
+
+        generateWorkspaceCodeStyleGuide: {
+            rest: {
+                method: "POST",
+                path: "/:id/generate-workspace-code-style-guide"
+            },
+            params: {
+                id: { type: "string" },
+                query: { type: "string" }
+            },
+            async handler(ctx) {
+                const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
+
+                const [GenerateWorkspaceCodeStyleGuide] = await Promise.all([
+                    ctx.call("v1.tools.lookup", { name: 'GenerateWorkspaceCodeStyleGuide' })
+                ]);
+
+                const styleGuide = await this.generateRun(ctx, {
+                    content: ctx.params.query
+                }, GenerateWorkspaceCodeStyleGuide)
+
+                return this.updateEntity(ctx, { id: ctx.params.id, codeStyleGuide: styleGuide.message.content });
             }
         },
 
@@ -466,52 +568,47 @@ keyDetails:
             },
             params: {
                 id: { type: "string" },
-                specification: { type: "object" }
+                specification: { type: "object" },
+                styleGuide: { type: "string" },
             },
             async handler(ctx) {
                 const workspace = await this.resolveEntities(ctx, { id: ctx.params.id });
                 if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.id} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.id });
 
-                const [model, tool] = await Promise.all([
-                    ctx.call("v1.models.lookup", { name: "gpt-4o-mini" }),
-                    ctx.call("v1.tools.lookup", { name: 'JavaScriptFileSpecification' })
+                const [tool, artifactTool] = await Promise.all([
+                    ctx.call("v1.tools.lookup", { name: 'JavaScriptFileSpecification' }),
+                    ctx.call("v1.tools.lookup", { name: 'GenerateNewArtifact' })
                 ]);
 
-                const run = await ctx.call("v1.runs.create", {
-                    name: "JavaScriptFileSpecification",
-                    model: model.id,
-                    tool: tool.id,
-                    options: {}
-                });
+                const fileSpecification = await this.generateRun(ctx, {
+                    content: [ctx.params.styleGuide, JSON.stringify(ctx.params.specification)]
+                }, tool);
 
-                await ctx.call("v1.messages.create", {
-                    run: run.id,
-                    role: "system",
-                    content: tool.systemPrompt
-                });
+                const newArtifact = await this.generateRun(ctx, {
+                    content: [ctx.params.styleGuide, JSON.stringify(fileSpecification.message.tool_calls[0].args)]
+                }, artifactTool);
 
-                await ctx.call("v1.messages.create", {
-                    run: run.id,
-                    role: "user",
-                    content: JSON.stringify(ctx.params.specification)
-                });
 
-                const result = await ctx.call("v1.runs.invoke", { id: run.id });
-                const message = await ctx.call("v1.messages.resolve", { id: result.response });
-
-                return message.tool_calls[0].args;
+                return {
+                    newArtifact,
+                    fileSpecification
+                }
             }
         },
 
         test: {
             rest: "GET /test",
             async handler(ctx) {
-                const workspace = await this.createEntity(ctx, {
-                    name: "test",
-                    description: "test",
-                    workingDirectory: "./workspace/workspace/code/"
-                });
-                return workspace;
+                const workspace = await this.resolveEntities(ctx, { id: 'knwQRN5091jXFICV' });
+
+
+                const query = "Build an e-commerce landing page using AngularJS and Bootstrap v3. The site should include a homepage that showcases featured products, a product listing page with filtering options, and a product details page. The homepage should have a hero banner with promotional content, testimonials, and a newsletter subscription form. The product listing page should display products in a grid with search and category filters. The product details page should include an image, description, price, and an 'Add to Cart' button. The site should be mobile-friendly and use AngularJS for navigation and dynamic content."
+
+                return this.actions.generateInitialFileStructure({ id: workspace.id, query })
+                    .catch(err => {
+                        return this.actions.generateWorkspaceCodeStyleGuide({ id: workspace.id, query })
+                            .then(() => this.actions.generateInitialFileStructure({ id: workspace.id, query }))
+                    })
             }
         },
 
@@ -577,6 +674,46 @@ keyDetails:
                 }
             }));
             return filePaths.flat();
+        },
+
+        async generateRun(ctx, { content }, artifactTool) {
+            const [model] = await Promise.all([
+                ctx.call("v1.models.lookup", { name: "gpt-4o-mini" }),
+            ]);
+            const artifactRun = await ctx.call("v1.runs.create", {
+                name: artifactTool.name,
+                model: model.id,
+                tool: artifactTool.id,
+                options: {}
+            });
+
+            await ctx.call("v1.messages.create", {
+                run: artifactRun.id,
+                role: "system",
+                content: artifactTool.systemPrompt
+            });
+
+            if (Array.isArray(content)) {
+                for (const c of content) {
+                    await ctx.call("v1.messages.create", {
+                        run: artifactRun.id,
+                        role: "user",
+                        content: typeof c === "string" ? c : JSON.stringify(c)
+                    });
+                }
+            } else {
+                await ctx.call("v1.messages.create", {
+                    run: artifactRun.id,
+                    role: "user",
+                    content: typeof content === "string" ? content : JSON.stringify(content)
+                });
+            }
+
+            const updated = await ctx.call("v1.runs.invoke", { id: artifactRun.id });
+            console.log(updated)
+            const message = await ctx.call("v1.messages.resolve", { id: updated.response });
+
+            return { message, run: updated };
         }
     },
 

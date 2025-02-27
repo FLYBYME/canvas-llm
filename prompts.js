@@ -2,7 +2,6 @@
 const z = require("zod");
 const { zodToJsonSchema } = require("zod-to-json-schema");
 const PROGRAMMING_LANGUAGES = require("./lib/programming-languages.js");
-const { actions, version } = require("./services/workspaces.service.js");
 
 const prompts = [
     /**
@@ -439,8 +438,22 @@ Include any additional notes necessary to clarify or support the criteria.
 
 Draw on the user's request and conversation history for relevant context.`,
         options: {}
-    }
+    },
+    {
+        name: "GenerateWorkspaceCodeStyleGuide",
+        description: "Generate a concise and detailed workspace code style guide for consistent code generation.",
+        input: {},
+        systemPrompt: `You are an AI assistant tasked with generating a workspace code style guide to ensure consistent and high-quality code generation. Your guide will be passed to another AI model that generates new code, so it must be structured, precise, and unambiguous. Based on the user's project specification, provide a detailed guide covering:
 
+- **Naming Conventions:** Standardized naming for files, variables, functions, components, and services.
+- **Formatting Standards:** Rules for indentation, line breaks, spacing, and preferred syntax styles.
+- **Framework Best Practices:** Guidelines specific to AngularJS and Bootstrap v3, including modular architecture, reusable components, and efficient DOM manipulation.
+
+    Ensure the guide is concise but complete, leaving no room for ambiguity. Where relevant, provide examples to illustrate key principles.`,
+        options: {
+            plainText: true
+        }
+    }
 ];
 
 
@@ -478,6 +491,43 @@ Code:
 Language: {language}`,
         options: {}
     },
+    {
+        name: "CodeReviewAnalysis",
+        description: "Review the given code diff and provide feedback on changes.",
+        schema: z.object({
+            comments: z.array(z.object({
+                line: z.number().describe("Line number in the diff where the comment applies."),
+                type: z.enum(["style", "bug", "performance", "security", "maintainability"]).describe("Category of the issue found."),
+                severity: z.enum(["low", "medium", "high"]).describe("Severity level of the issue."),
+                description: z.string().describe("Explanation of the issue found."),
+                suggestion: z.string().describe("Recommended action to improve the code."),
+            })).describe("List of comments on the diff with details."),
+            review: z.string().describe("Detailed review of the code changes."),
+            passed: z.boolean().describe("Whether the code diff passes the review."),
+        }),
+        input: {
+            code: "{code}",
+            language: "{language}",
+        },
+        systemPrompt: `You are an AI assistant reviewing a code diff for potential issues.
+
+Analyze the following code diff and provide feedback on:
+- Line number of the issue
+- Type of issue (style, bug, performance, security, maintainability)
+- Severity (low, medium, high)
+- Description of the problem
+- Suggested improvement
+- Be exstremely critical in your analysis and provide a detailed review of the code changes.
+- If the review does not pass, explain why.
+
+This is the updated code:
+<artifact>
+{code}
+</artifact>
+
+Language: {language}`,
+        options: {}
+    },    
     /**
      * Function Documentation
      */
@@ -769,11 +819,38 @@ modulePrompts.push({
 });
 
 
+const FileStructure = z.object({
+    filePath: z.string().describe("The relative path of the file."),
+    title: z.string().describe("A brief description of the file's purpose or main function."),
+    fileType: z.enum(PROGRAMMING_LANGUAGES.map(language => language.language)).describe("The programming language used in the file."),
+    specification: z.object({
+        dependencies: z.array(z.string()).describe("List of dependencies required by the file."),
+        keyDetails: z.array(z.string()).describe("Key details extracted from the file (e.g., functions, middleware, model interactions)."),
+        exportedFunctions: z.array(z.object({
+            name: z.string().describe("The name of the exported function."),
+            arguments: z.array(z.string()).describe("List of arguments expected by the function."),
+            returns: z.string().describe("The expected return value of the function.")
+        })).describe("List of functions or methods exported by the file."),
+    }).describe("An object representing the file's specification.")
+});
+
+modulePrompts.push({
+    name: "FileStructure",
+    description: "Generate a structured specification for a JavaScript file.",
+    schema: FileStructure,
+    input: {
+
+    },
+    systemPrompt: `You are an AI assistant tasked with generating a structured specification for a JavaScript file.`,
+    options: {}
+});
 
 const fullPrompts = [
     ...prompts,
     ...additionalPrompts,
-    ...modulePrompts
+    ...modulePrompts,
+    require('./prompts/angularjs-controller.js'),
+    require('./prompts/angularjs-service.js'),
 ];
 // loop through the properties and delete any keys starting with '$'
 // Deep walk
@@ -790,6 +867,9 @@ const remove$ = (obj) => {
 }
 
 for (const prompt of fullPrompts) {
+    if (!prompt.schema) {
+        continue;
+    }
     prompt.schema = zodToJsonSchema(prompt.schema);
     remove$(prompt.schema);
 }

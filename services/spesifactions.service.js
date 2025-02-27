@@ -1,16 +1,10 @@
 "use strict";
 
 const DbService = require("@moleculer/database").Service;
-
-// **Specification** refers to a detailed description of the task's context, current state, and proposed changes within the software system. It serves as a blueprint that outlines the desired outcomes and provides clear success criteria. The Specification typically includes:
-// 1. **Current Behavior**: A description of the existing functionality, system state, or code structure related to the task. This helps to understand how the system currently works and where improvements or changes are necessary.
-// 2. **Proposed Changes**: A detailed outline of the desired modifications, including what should be added, removed, or modified in the codebase. This section clarifies the goals and defines what success looks like for the task.
-// 3. **Impact Analysis**: Identifying how the proposed changes will affect the system, including potential side effects, dependencies, and interactions with other components.
-// 4. **Success Criteria**: Clear, measurable conditions that determine when the task is considered complete. This can include passing tests, code reviews, performance improvements, or specific functionality being achieved.
-// The **Specification** ensures alignment between the development team and stakeholders, providing a concrete understanding of what needs to be done and how success will be measured.
+const { v4: uuidv4 } = require("uuid");
 
 /**
- * Spesifactions service
+ * specifications service
  */
 module.exports = {
     name: "specifications",
@@ -20,7 +14,7 @@ module.exports = {
         DbService({
             adapter: {
                 type: "NeDB",
-                options: "./db/spesifactions.db"
+                options: "./db/specifications.db"
             }
         })
     ],
@@ -34,69 +28,200 @@ module.exports = {
      * Service settings
      */
     settings: {
-        rest: "/v1/spesifactions",
+        rest: "/v1/specifications",
 
         fields: {
-            title: {
+
+            conversation: {
                 type: "string",
                 required: true,
-                trim: true
+                empty: false,
+                populate: {
+                    action: "v1.conversations.resolve"
+                }
             },
-            description: {
-                type: "string",
-                required: true,
-                trim: true
-            },
-            
-            currentBehavior: {
+
+            proposal: {
                 type: "object",
-                items: {
-                    summary: { type: "string", required: true, trim: true },
-                    details: { type: "string", required: true, trim: true }
-                },
-                default: {},
-                required: false
-            },
-            proposedChanges: {
-                type: "object",
-                items: {
-                    summary: { type: "string", required: true, trim: true },
-                    details: { type: "string", required: true, trim: true }
-                },
-                default: {},
-                required: false
-            },
-            impactAnalysis: {
-                type: "object",
-                items: {
-                    summary: { type: "string", required: true, trim: true },
-                    details: { type: "string", required: true, trim: true },
-                    // Optional: a list of dependencies or affected components
-                    dependencies: {
-                        type: "array",
-                        items: "string",
-                        default: [],
-                        required: false
+                properties: {
+                    title: {
+                        type: "string"
+                    },
+                    description: {
+                        type: "string"
                     }
                 },
-                default: {},
                 required: false
             },
-            successCriteria: {
+
+            requirements: {
                 type: "object",
-                items: {
-                    // An array of clear and measurable criteria
-                    criteria: { type: "array", items: "string", required: true },
-                    // Additional notes if needed
-                    notes: { type: "string", default: "", trim: true }
+                properties: {
+                    projectName: {
+                        type: "string"
+                    },
+                    projectDescription: {
+                        type: "string"
+                    },
+                    objectives: {
+                        type: "array",
+                        items: "string"
+                    },
+                    technologies: {
+                        type: "array",
+                        items: "string"
+                    },
+                    stakeholders: {
+                        type: "array",
+                        items: "string"
+                    },
+                    requirements: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                title: {
+                                    type: "string"
+                                },
+                                description: {
+                                    type: "string"
+                                },
+                                priority: {
+                                    type: "string"
+                                },
+                                status: {
+                                    type: "string"
+                                }
+                            }
+                        }
+                    },
                 },
-                default: {},
                 required: false
             },
-            tags: {
+
+            codingStandards: {
+                type: "object",
+                properties: {
+                    rules: {
+                        type: "array",
+                        items: "string"
+                    },
+                    guidelines: {
+                        type: "array",
+                        items: "string"
+                    },
+                    documentation: {
+                        type: "string"
+                    }
+                },
+                required: false
+            },
+
+            fileStructure: {
+                type: "object",
+                properties: {
+                    files: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                fileName: {
+                                    type: "string"
+                                },
+                                filePath: {
+                                    type: "string"
+                                },
+                                type: {
+                                    type: "string"
+                                },
+                                language: {
+                                    type: "string"
+                                },
+                                description: {
+                                    type: "string"
+                                },
+                                isClassDefinition: {
+                                    type: "boolean"
+                                },
+                                className: {
+                                    type: "string",
+                                    required: false
+                                }
+                            }
+                        }
+                    },
+                    rationale: {
+                        type: "string"
+                    }
+                },
+                required: false
+            },
+
+            classSchemas: {
                 type: "array",
-                items: "string",
-                default: [],
+                items: {
+                    type: "object",
+                    properties: {
+                        className: {
+                            type: "string"
+                        },
+                        description: {
+                            type: "string"
+                        },
+                        properties: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    name: {
+                                        type: "string"
+                                    },
+                                    type: {
+                                        type: "string"
+                                    },
+                                    description: {
+                                        type: "string"
+                                    }
+                                }
+                            }
+                        },
+                        methods: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    name: {
+                                        type: "string"
+                                    },
+                                    returnType: {
+                                        type: "string"
+                                    },
+                                    parameters: {
+                                        type: "array",
+                                        items: {
+                                            type: "object",
+                                            properties: {
+                                                name: {
+                                                    type: "string"
+                                                },
+                                                type: {
+                                                    type: "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    description: {
+                                        type: "string",
+                                    }
+                                }
+                            }
+                        },
+                        documentation: {
+                            type: "string",
+                            required: false
+                        }
+                    }
+                },
                 required: false
             },
 
@@ -133,7 +258,7 @@ module.exports = {
         },
 
         defaultScopes: [
-            'notDeleted'
+            // 'notDeleted'
         ],
 
         // default init config settings

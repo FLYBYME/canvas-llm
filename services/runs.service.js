@@ -320,33 +320,8 @@ module.exports = {
                         content: result.content || "No response from model",
                     });
 
-                    await this.updateEntity(ctx, {
-                        id: run.id,
-                        error: message.id,
-                        endTime: Date.now(),
-                        status: "success",
-                    });
 
-                    this.logger.info(`Processed run ${run.id}: ${run.name} - ${message.id} Took ${Date.now() - run.createdAt}ms`);
-
-                    ctx.emit("v1.runs.processed", { id: run.id });
-
-                    this.active--;
-
-                    if (this.waiting.has(run.id)) {
-                        const queue = this.waiting.get(run.id);
-                        while (queue.length > 0) {
-                            const { resolve } = queue.shift();
-                            resolve(updated);
-                        }
-                    }
-
-                    setImmediate(() => {
-                        this.actions.processQueue({})
-                            .catch((err) => {
-                                this.logger.error(`Error processing queue: `, err);
-                            })
-                    });
+                    await this.endRun(ctx, run, message);
                     return;
                 }
 
@@ -358,7 +333,14 @@ module.exports = {
                     name: tool.name,
                     description: tool.description,
                     schema: eval(jsonSchemaToZod(tool.schema)),
-                }], options).withConfig({ runName: tool.name }).invoke(messages);
+                }], options).withConfig({ runName: tool.name }).invoke(messages)
+                    .catch((err) => {
+                        this.logger.error(`Error processing run ${run.id}: ${run.name}`, err);
+                        return this.endRun(ctx, run, message)
+                            .then(() => {
+                                throw err;
+                            });
+                    });
 
 
                 const message = await ctx.call("v1.messages.create", {
@@ -368,34 +350,40 @@ module.exports = {
                     tool_calls: result.tool_calls || []
                 });
 
-                const updated = await this.updateEntity(ctx, {
-                    id: run.id,
-                    response: message.id,
-                    endTime: Date.now(),
-                    status: "success",
-                });
-
-                this.logger.info(`Processed run ${run.id}: ${run.name} - ${message.id} Took ${Date.now() - run.createdAt}ms`);
-
-                ctx.emit("v1.runs.processed", { id: run.id });
-
-                this.active--;
-
-                if (this.waiting.has(run.id)) {
-                    const queue = this.waiting.get(run.id);
-                    while (queue.length > 0) {
-                        const { resolve } = queue.shift();
-                        resolve(updated);
-                    }
-                }
-
-                setImmediate(() => {
-                    this.actions.processQueue({})
-                        .catch((err) => {
-                            this.logger.error(`Error processing queue: `, err);
-                        })
-                });
+                await this.endRun(ctx, run, message);
             }
+        },
+
+        async endRun(ctx, run, message) {
+
+            this.logger.info(`Processed run ${run.id}: ${run.name} - ${message.id} Took ${Date.now() - run.createdAt}ms`);
+
+            ctx.emit("v1.runs.processed", { id: run.id });
+
+            const updated = await this.updateEntity(ctx, {
+                id: run.id,
+                endTime: Date.now(),
+                status: "success",
+                response: message.id
+            });
+
+
+            this.active--;
+
+            if (this.waiting.has(run.id)) {
+                const queue = this.waiting.get(run.id);
+                while (queue.length > 0) {
+                    const { resolve } = queue.shift();
+                    resolve(updated);
+                }
+            }
+
+            setImmediate(() => {
+                this.actions.processQueue({})
+                    .catch((err) => {
+                        this.logger.error(`Error processing queue: `, err);
+                    })
+            });
         }
     },
 

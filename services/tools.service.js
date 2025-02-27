@@ -2,7 +2,7 @@
 
 const DbService = require("@moleculer/database").Service;
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
-const prompts = require("../prompts");
+const prompts = require("../prompts/index.js");
 
 /**
  * Ollama tool schema service
@@ -84,6 +84,13 @@ module.exports = {
                 empty: false,
             },
 
+            // conversation
+            conversation: {
+                type: "boolean",
+                required: false,
+                default: false
+            },
+
             // options
             options: {
                 type: "object",
@@ -158,21 +165,19 @@ module.exports = {
                 return tool;
             }
         },
-        call: {
-            rest: "POST /:id/call/:member",
+        invoke: {
+            rest: "POST /invoke",
             params: {
-                id: { type: "string" },
-                member: { type: "string" },
-                args: { type: "object" }
+                name: { type: "string" },
+                input: { type: "object", optional: true, default: {} },
+                context: { type: "array", optional: true, default: [] }
             },
             async handler(ctx) {
-                const tool = await this.resolveTool(ctx, ctx.params.id);
-                const data = {
-                    ...ctx.params.args,
-                    ...tool.options
-                };
-                console.log('data', data);
-                return ctx.call(tool.action, data);
+                const [model, tool] = await Promise.all([
+                    ctx.call("v1.models.lookup", { name: "gpt-4o-mini" }),
+                    ctx.call("v1.tools.lookup", { name: ctx.params.name })
+                ]);
+                return this.invokeTool(ctx, tool, ctx.params.input, ctx.params.context);
             }
         },
 
@@ -218,13 +223,64 @@ module.exports = {
             const tool = await this.findEntity(ctx, { query: { name } });
             return tool;
         },
-        
+
+        async getFullPrompt(ctx, tool, input, context) {
+            let fullPrompt = tool.systemPrompt;
+            const keys = Object.keys(input);
+            for (const key of keys) {
+                if (tool.input[key])
+                    fullPrompt = fullPrompt.replace(tool.input[key], input[key]);
+            }
+            return fullPrompt;
+        },
+
+        async invokeTool(ctx, tool, input, context) {
+            this.logger.info(`Invoking tool ${tool.name}`)
+            const model = await ctx.call("v1.models.lookup", { name: "gpt-4o-mini" });
+            const run = await ctx.call("v1.runs.create", {
+                name: tool.name,
+                model: model.id,
+                tool: tool.id,
+                options: {}
+            });
+
+            this.logger.info("Created run", run.id)
+
+            const fullPrompt = await this.getFullPrompt(ctx, tool, input, context);
+            this.logger.info("Full prompt:", fullPrompt)
+            await ctx.call("v1.messages.create", {
+                run: run.id,
+                role: "system",
+                content: fullPrompt
+            });
+
+            this.logger.info("Added context:", context)
+
+            for (const prompt of context) {
+                this.logger.info("Adding prompt:", prompt)
+                await ctx.call("v1.messages.create", {
+                    run: run.id,
+                    role: "user",
+                    content: prompt
+                });
+            }
+
+            const runUpdate = await ctx.call("v1.runs.invoke", { id: run.id });
+            const result = await ctx.call("v1.messages.getResult", {
+                id: runUpdate.response
+            })
+
+            this.logger.info("Result:", result)
+
+            return result;
+        },
+
         async loadPrompts() {
             for (const tool of prompts) {
                 const found = await this.resolveToolByName(this.broker, tool.name);
                 if (!found) {
                     await this.createEntity(this.broker, tool);
-                }else{
+                } else {
                     await this.updateEntity(this.broker, { id: found.id, ...tool });
                 }
             }
@@ -243,7 +299,7 @@ module.exports = {
      */
     async started() {
         await this.loadPrompts();
-     },
+    },
 
     /**
      * Service stopped lifecycle event handler

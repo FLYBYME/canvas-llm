@@ -154,10 +154,39 @@ module.exports = {
                 try {
                     return JSON.parse(message.content);
                 } catch (e) {
-                    console.log(e);
-                    console.log(message.content);
                     return message.content;
                 }
+            }
+        },
+
+        getConversation: {
+            rest: "GET /conversation/:id",
+            params: {
+                id: { type: "string" }
+            },
+            async handler(ctx) {
+                const messages = await this.findEntities(ctx, {
+                    query: { run: ctx.params.id },
+                    sort: 'createdAt'
+                });
+
+                return this.formatMessages(ctx, messages);
+            }
+        },
+
+        clearConversation: {
+            rest: "DELETE /conversation/:id",
+            async handler(ctx) {
+                const messages = await this.findEntities(ctx, {
+                    query: { run: ctx.params.id },
+                    sort: 'createdAt'
+                });
+
+                for (const message of messages) {
+                    await this.removeEntity(ctx, { id: message.id });
+                }
+
+                return messages.length;
             }
         },
 
