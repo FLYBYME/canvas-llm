@@ -13,6 +13,7 @@ const prompts = [
     require('./artifact-new'),
     require('./artifact-review'),
     require('./artifact-update'),
+    require('./GenerateEndpointImplementation'),
 ];
 
 const remove$ = (obj) => {

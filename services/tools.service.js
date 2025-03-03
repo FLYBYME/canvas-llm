@@ -185,15 +185,7 @@ module.exports = {
         seedDB: {
             rest: "POST /seed",
             async handler(ctx) {
-                const count = await this.countEntities(null, {});
-                if (count > 0) {
-                    return;
-                }
-                const tools = [];
-                for (const tool of SeedTools) {
-                    tools.push(await this.createEntity(ctx, tool));
-                }
-                return tools;
+                return this.loadPrompts();
             }
         },
 
