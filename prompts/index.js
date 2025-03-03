@@ -31,7 +31,12 @@ for (const prompt of prompts) {
     if (!prompt.schema) {
         continue;
     }
-    prompt.schema = zodToJsonSchema(prompt.schema);
+    try {
+
+        prompt.schema = zodToJsonSchema(prompt.schema);
+    } catch (e) {
+        
+    }
     remove$(prompt.schema);
 }
 

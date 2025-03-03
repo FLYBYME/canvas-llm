@@ -1,6 +1,5 @@
 "use strict";
 const { PROGRAMMING_LANGUAGES } = require("../lib/constants.js");
-const { description } = require("../prompts/js-class.js");
 const DbService = require("@moleculer/database").Service;
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
@@ -79,6 +78,17 @@ module.exports = {
                 default: "",
             },
 
+            isModuleDefinition: {
+                type: "boolean",
+                required: false,
+                default: false,
+            },
+            moduleName: {
+                type: "string",
+                required: false,
+                default: "",
+            },
+
             id: {
                 type: "string",
                 primaryKey: true,
@@ -130,7 +140,68 @@ module.exports = {
                 },
             },
             async handler(ctx) {
-                return await this.findEntities(ctx, { query: { workspace: ctx.params.workspace } });
+                return this.findEntities(ctx, { query: { workspace: ctx.params.workspace } });
+            }
+        },
+
+        generateFileStructures: {
+            rest: {
+                method: "GET",
+                path: "/generate/:workspace",
+            },
+            params: {
+                workspace: {
+                    type: "string",
+                    optional: false,
+                    empty: false,
+                },
+            },
+            async handler(ctx) {
+                const workspace = await ctx.call("v1.workspaces.resolve", { id: ctx.params.workspace });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${ctx.params.workspace} not found`, 404, "WORKSPACE_NOT_FOUND", { id: ctx.params.workspace });
+
+                const files = await this.findEntities(ctx, { query: { workspace: ctx.params.workspace } });
+
+                const result = await ctx.call("v1.tools.invoke", {
+                    name: "FileStructureBlueprint",
+                    input: {},
+                    context: [
+                        JSON.stringify(files),
+                        JSON.stringify(workspace.requirements),
+                    ]
+                });
+
+                return result[0].files;
+            }
+        },
+
+        refineFileStructure: {
+            rest: "POST /:id/refine",
+            params: {
+                id: {
+                    type: "string",
+                    optional: false,
+                    empty: false,
+                },
+            },
+            async handler(ctx) {
+
+                const file = await this.resolveEntities(ctx, { id: ctx.params.id });
+                if (!file) throw new MoleculerClientError(`File structure ${ctx.params.id} not found`, 404, "FILE_STRUCTURE_NOT_FOUND", { id: ctx.params.id });
+
+                const workspace = await ctx.call("v1.workspaces.resolve", { id: file.workspace });
+                if (!workspace) throw new MoleculerClientError(`Workspace ${file.workspace} not found`, 404, "WORKSPACE_NOT_FOUND", { id: file.workspace });
+
+                const result = await ctx.call("v1.tools.invoke", {
+                    name: "FileStructureRefinement",
+                    input: {},
+                    context: [
+                        JSON.stringify(workspace.requirements),
+                        JSON.stringify(file),
+                    ]
+                });
+
+                return result[0];
             }
         },
 

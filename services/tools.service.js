@@ -244,20 +244,14 @@ module.exports = {
                 options: {}
             });
 
-            this.logger.info("Created run", run.id)
-
             const fullPrompt = await this.getFullPrompt(ctx, tool, input, context);
-            this.logger.info("Full prompt:", fullPrompt)
             await ctx.call("v1.messages.create", {
                 run: run.id,
                 role: "system",
                 content: fullPrompt
             });
 
-            this.logger.info("Added context:", context)
-
             for (const prompt of context) {
-                this.logger.info("Adding prompt:", prompt)
                 await ctx.call("v1.messages.create", {
                     run: run.id,
                     role: "user",
@@ -268,9 +262,7 @@ module.exports = {
             const runUpdate = await ctx.call("v1.runs.invoke", { id: run.id });
             const result = await ctx.call("v1.messages.getResult", {
                 id: runUpdate.response
-            })
-
-            this.logger.info("Result:", result)
+            });
 
             return result;
         },

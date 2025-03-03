@@ -13,9 +13,11 @@ module.exports = {
     input: {
         artifact: '{artifact}'
     },
-    systemPrompt: `You are an AI assistant that reviews code artifacts and provides feedback on how to improve them.`,
-    output: {
-        
+    systemPrompt: `You are an AI assistant that reviews code artifacts and provides feedback on how to improve them. DO NOT provide code in your response. Only provide a review of the artifact and suggestions for how to improve it.
+
+Do not talk about tests or documentation. Only focus on the code itself.`,
+    options: {
+        //plainText: true
     },
     conversation: true
 };

@@ -1,3 +1,0 @@
-{"name":"deepseek-r1:7b","model":"deepseek-r1:7b","size":7,"type":"ollama","createdAt":1740248895752,"_id":"o53iBoR2O1ARV8ym"}
-{"name":"llama3.2:1b","model":"llama3.2:1b","size":1,"type":"ollama","createdAt":1740248895762,"_id":"4b7yhHr7ldm2P2t4"}
-{"name":"gpt-4o-mini","model":"gpt-4o-mini","size":400,"type":"openai","createdAt":1740248895765,"_id":"9k4yRc9THxSeROaa"}

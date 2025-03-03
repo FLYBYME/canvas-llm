@@ -49,6 +49,8 @@ Follow these rules and guidelines:
 - You should use proper markdown syntax when appropriate, as the text you generate will be rendered in markdown. UNLESS YOU ARE WRITING CODE.
 - When you generate code, a markdown renderer is NOT used so if you respond with code in markdown syntax, or wrap the code in tipple backticks it will break the UI for the user.
 - If generating code, it is imperative you never wrap it in triple backticks, or prefix/suffix it with plain text. Ensure you ONLY respond with the code.
+- If generating code, ensure the code fully functional and complete. If you need to import any libraries, ensure you include them in the code.
+- DO NOT leave any logic incomplete or broken. If you are generating code, ensure it is fully functional and complete.
 </rules-guidelines>
 
 Ensure you ONLY reply with the rewritten artifact and NO other content.`,

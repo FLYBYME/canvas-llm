@@ -1,6 +1,7 @@
 "use strict";
 
 const DbService = require("@moleculer/database").Service;
+const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
 /**
  * Conversations service
