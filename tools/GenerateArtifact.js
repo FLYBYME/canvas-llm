@@ -55,9 +55,5 @@ Follow these rules and guidelines:
 - DO NOT leave any logic incomplete or broken. If you are generating code, ensure it is fully functional and complete.
 </rules-guidelines>
 
-Ensure you ONLY reply with the rewritten artifact and NO other content.`,
-    userPrompt: `The users message below is the most recent message they sent. Use this to determine what the title and type of the artifact should be.
-<user-message>
-{userMessage}
-</user-message>`
+Ensure you ONLY reply with the rewritten artifact and NO other content.`
 };

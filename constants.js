@@ -3,7 +3,7 @@
  */
 
 
-export const PROGRAMMING_LANGUAGES = [
+const PROGRAMMING_LANGUAGES = [
     { language: "python", extension: "py" },
     { language: "javascript", extension: "js" },
     { language: "typescript", extension: "ts" },
@@ -22,3 +22,7 @@ export const PROGRAMMING_LANGUAGES = [
     { language: "markdown", extension: "md" },
     { language: "bash", extension: "sh" },
 ];
+
+module.exports = {
+    PROGRAMMING_LANGUAGES
+};

@@ -1,15 +1,13 @@
 const z = require("zod");
 const { zodToJsonSchema } = require('zod-to-json-schema');
+const fs = require("fs");
 
 /**
  * Prompts for the tools service
  * Add your prompt definitions and management functions here
  */
 
-const prompts = [
-    require('./tools/GenerateArtifact.js'),
-    require('./tools/RefineArtifact.js'),
-];
+const prompts = [];
 
 const remove$ = (obj) => {
     if (typeof obj === 'object' && obj !== null) {
@@ -21,7 +19,17 @@ const remove$ = (obj) => {
             }
         }
     }
+};
+
+const promptFiles = fs.readdirSync("./tools");
+
+for (const promptFile of promptFiles) {
+    if (promptFile.endsWith(".js")) {
+        const prompt = require(`./tools/${promptFile}`);
+        prompts.push(prompt);
+    }
 }
+
 
 for (const prompt of prompts) {
     if (!prompt.schema) {

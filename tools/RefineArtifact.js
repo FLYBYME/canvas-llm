@@ -1,10 +1,14 @@
 const z = require("zod");
 
+const { PROGRAMMING_LANGUAGES } = require("../constants");
+
 const Schema = z.object({
     artifact: z.string().describe("The content of the artifact to refine."),
     feedback: z.string().describe("The feedback or instructions for refining the artifact."),
     language: z
-        .enum(["python", "javascript", "typescript", "c", "c++", "java", "go", "php", "ruby", "sql", "html", "css", "json", "xml", "yaml", "markdown", "bash"])
+        .enum(
+            PROGRAMMING_LANGUAGES.map((lang) => lang.language)
+        )
         .optional()
         .describe("The language/programming language of the artifact to refine."),
     isValidReact: z
@@ -19,6 +23,7 @@ module.exports = {
     schema: Schema,
     input: {
         userMessage: "{userMessage}",
+        artifact: "{artifact}"
     },
     systemPrompt: `You are an AI assistant, and the user has requested you refine an artifact they provided.
 
@@ -33,9 +38,10 @@ Follow these rules and guidelines:
 - DO NOT leave any logic incomplete or broken. If you are generating code, ensure it is fully functional and complete.
 </rules-guidelines>
 
-Ensure you ONLY reply with the refined artifact and NO other content.`,
-    userPrompt: `The users message below is the most recent message they sent. Use this to determine how to refine the artifact.
-<user-message>
-{userMessage}
-</user-message>`
+The current artifact is:
+<artifact>
+{artifact}
+</artifact>
+
+Ensure you ONLY reply with the refined artifact and NO other content.`
 };
