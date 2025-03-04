@@ -1,6 +1,6 @@
 const z = require("zod");
 
-const { PROGRAMMING_LANGUAGES } = require("../lib/constants");
+const { PROGRAMMING_LANGUAGES } = require("../constants");
 
 const Schema = z.object({
     type: z
