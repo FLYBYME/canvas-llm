@@ -8,6 +8,7 @@ const { zodToJsonSchema } = require('zod-to-json-schema');
 
 const prompts = [
     require('./tools/GenerateArtifact.js'),
+    require('./tools/RefineArtifact.js'),
 ];
 
 const remove$ = (obj) => {
