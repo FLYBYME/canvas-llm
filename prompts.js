@@ -30,7 +30,6 @@ for (const promptFile of promptFiles) {
     }
 }
 
-
 for (const prompt of prompts) {
     if (!prompt.schema) {
         continue;

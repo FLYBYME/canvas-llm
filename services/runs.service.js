@@ -313,7 +313,7 @@ module.exports = {
 
                 if (tool.options?.plainText) {
 
-                    const result = await model.invoke(messages);
+                    const result = await model.withConfig({ runName: tool.name }).invoke(messages);
                     const message = await ctx.call("v1.messages.create", {
                         run: run.id,
                         role: "assistant",
